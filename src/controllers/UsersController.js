@@ -1,19 +1,62 @@
-import { cadastrarUsuario,buscarUsuarioPorEmail,atualizarUsuario } from "../models/UsersModel.js";
 
-export const registrar = async(req,res) => {
+import { cadastrarUsuario, buscarUsuarioPorEmail, atualizarUsuario } from "../models/UsersModel.js";
+import jwt from 'jsonwebtoken';
+import bcrypt from "bcryptjs";
+
+
+export const login = async (req, res) => {
+    const { email, senha } = req.body;
+
     try {
-        const {nome,email,senha} = req.body;
         const usuarioJaExiste = await buscarUsuarioPorEmail(email);
 
-        if(usuarioJaExiste) {
-            return res.status(400).json({mensagem: 'Este e-mail já está em uso!'});
+        if (!usuarioJaExiste) {
+            return res.status(401).json({ mensagem: 'E-mail ou senha incorretos!' });
         }
 
-        const novoUsuario = await cadastrarUsuario(nome,email,senha);
-        return res.status(201).json({mensagem: 'Usuário cadastrado com sucesso!'});
-        usuario:novoUsuario
+        const senhaValida = await bcrypt.compare(senha, usuarioJaExiste.senha);
+
+        if (!senhaValida) {
+            return res.status(401).json({ mensagem: 'E-mail ou senha incorretos!' });
+        }
+
+        const token = jwt.sign(
+            { id: usuarioJaExiste.id, email: usuarioJaExiste.email },
+            process.env.JWT_SECRET || 'chave_segura_projeto',
+            { expiresIn: '1h' }
+        );
+
+        return res.status(200).json({
+            mensagem: 'Login realizado com sucesso!',
+            token: token
+        });
+
     } catch (error) {
-        return res.status(500).json({mensagem: 'Erro ao registrar usuário.', erro: error.message});
+        return res.status(500).json({ mensagem: 'Erro ao realizar login.', erro: error.message });
+    }
+};
+
+export const registrar = async (req, res) => {
+    try {
+        const { nome, email, senha } = req.body;
+        const usuarioJaExiste = await buscarUsuarioPorEmail(email);
+
+        if (usuarioJaExiste) {
+            return res.status(400).json({ mensagem: 'Este e-mail já está em uso!' });
+        }
+
+       
+        const salt = await bcrypt.genSalt(10);
+        const senhaCriptografada = await bcrypt.hash(senha, salt);
+
+        const novoUsuario = await cadastrarUsuario(nome, email, senhaCriptografada);
+       
+        return res.status(201).json({ 
+            mensagem: 'Usuário cadastrado com sucesso!', 
+            usuario: novoUsuario 
+        });
+    } catch (error) {
+        return res.status(500).json({ mensagem: 'Erro ao registrar usuário.', erro: error.message });
     }
 }
 
@@ -31,7 +74,6 @@ export const listarUsuarios = async (req, res) => {
 };
 
 import { excluirUsuario } from '../models/UsersModel.js';
-
 export const deletar = async (req, res) => {
     try {
         const { id } = req.params; 
@@ -51,10 +93,17 @@ export const atualizar = async (req, res) => {
     const { id } = req.params;
     const { nome, email, senha } = req.body;
     try {
-        const usuarioAtualizado = await atualizarUsuario(id, nome, email, senha);
+       
+        let senhaFinal = senha;
+        if (senha) {
+            const salt = await bcrypt.genSalt(10);
+            senhaFinal = await bcrypt.hash(senha, salt);
+        }
+      
+
+        const usuarioAtualizado = await atualizarUsuario(id, nome, email, senhaFinal);
         return res.status(200).json({ mensagem: "Usuário atualizado!", usuario: usuarioAtualizado });
     } catch (error) {
         return res.status(500).json({ erro: error.message });
     }
 };
-
