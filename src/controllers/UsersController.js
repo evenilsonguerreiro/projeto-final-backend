@@ -22,7 +22,7 @@ export const login = async (req, res) => {
 
         const token = jwt.sign(
             { id: usuarioJaExiste.id, email: usuarioJaExiste.email },
-            process.env.JWT_SECRET || 'chave_segura_projeto',
+             'chave_segura_evenilson',
             { expiresIn: '1h' }
         );
 
