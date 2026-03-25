@@ -17,7 +17,7 @@ export const validarToken = async (req, res, next) => {
     }
 
     try {
-        const secret = 'chave_segura_evenilson';
+        const secret = process.env.JWT_SECRET;
         const verificado = jwt.verify(token, secret);
         req.users = verificado;
         next();
