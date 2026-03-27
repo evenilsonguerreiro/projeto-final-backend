@@ -3,8 +3,7 @@ import jwt from 'jsonwebtoken';
 export const validarToken = async (req, res, next) => {
    
     const authHeader = req.header('Authorization');
-    
-   
+
     const token = authHeader?.replace('Bearer', '').trim();
 
    
